@@ -1,0 +1,83 @@
+# Abyss 示例配置文件 (TOML)
+
+# 服务器监听地址与端口
+address = "127.0.0.1"
+port = "8080"
+
+# TLS 配置 (如需启用 HTTPS，请填写证书路径)
+cert = ""
+key = ""
+
+# 数据存储根目录
+root = "./data"
+
+# 基础 URL (如: https://example.com)
+baseURL = ""
+
+# 日志配置 (log 为日志路径，或 "stdout")
+log = "stdout"
+logLevel = "info"
+
+# 缓存目录 (留空使用默认)
+cacheDir = ""
+
+# 令牌过期时间
+tokenExpirationTime = "2h"
+totpTokenExpirationTime = "2m"
+
+# 功能开关
+disableThumbnails = false
+disablePreviewResize = false
+disableTypeDetectionByHeader = false
+disableTOTP = false
+enablePasskey = true
+
+# 认证配置
+noauth = false
+email = "admin@example.com"
+password = "" # 留空将在首次启动时随机生成
+
+# 图像处理并发数 (建议设为 CPU 核心数)
+imageProcessors = 4
+
+# 用户默认存储配额 (如: 10G, 500M, 0 代表不限制)
+defaultStorageQuota = "10G"
+
+# 存储方式 (path: 传统路径, sharded: 分片加密存储)
+storageType = "path"
+
+# 数据库配置
+[database]
+type = "sqlite"      # 可选: sqlite, postgres, mysql, bolt
+path = "./abyss.db"  # 仅用于 sqlite 和 bolt
+log = false          # 是否启用 SQL 日志 (debug 模式)
+
+# 以下参数仅用于 postgres 和 mysql
+host = "localhost"
+port = 5432          # postgres 默认为 5432, mysql 默认为 3306
+user = "abyss"
+password = "your-password"
+name = "abyss"       # 数据库名称
+sslMode = "disable"  # 仅用于 postgres
+
+# SMTP 邮件服务配置
+[smtp]
+enabled = true
+host = "smtp.example.com"
+port = 587
+username = "user@example.com"
+password = "your-password"
+from = "noreply@example.com"
+useTLS = false
+enableRegistrationEmail = false
+enableShareNotification = false
+enablePasswordReset = false
+enableLoginAlert = false
+
+# 网络代理配置
+[proxy]
+enabled = true
+httpProxy = "http://127.0.0.1:7890"
+httpsProxy = "http://127.0.0.1:7890"
+noProxy = "localhost,127.0.0.1"
+useEnv = false
