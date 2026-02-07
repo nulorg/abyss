@@ -17,8 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate GitHub App Token
-        uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v1
         id: app-token
         with:
           app-id: ${{ vars.NULORG_PULL_APP_ID }}
@@ -26,8 +25,7 @@ jobs:
           owner: nulorg
           repositories: abyss-core
 
-      - name: Checkout abyss-core
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: nulorg/abyss-core
           token: ${{ steps.app-token.outputs.token }}
@@ -37,10 +35,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build frontend
-        run: |
-          npm install -g pnpm
-          cd abyss-core/www && pnpm install && pnpm run build
+      - run: npm install -g pnpm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - run: go mod edit -replace github.com/nulorg/abyss-core=./abyss-core
+
+      - run: make build CORE_DIR=./abyss-core ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
 
       - uses: docker/login-action@v3
         with:
@@ -65,5 +69,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            GITHUB_TOKEN=${{ steps.app-token.outputs.token }}
             ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
