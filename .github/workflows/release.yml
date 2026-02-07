@@ -4,6 +4,9 @@ on:
   push:
     tags: ['v*']
 
+env:
+  GOPRIVATE: github.com/nulorg/abyss-core
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -20,13 +23,10 @@ jobs:
           app-id: ${{ vars.NULORG_PULL_APP_ID }}
           private-key: ${{ secrets.NULORG_PULL_APP_PRIVATE_KEY }}
           owner: nulorg
-          repositories: abyss-core
+          repositories: abyss-core,abyss-www
 
-      - uses: actions/checkout@v4
-        with:
-          repository: nulorg/abyss-core
-          token: ${{ steps.app-token.outputs.token }}
-          path: abyss-core
+      - name: Configure Git for private repos
+        run: git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - uses: actions/setup-node@v4
         with:
@@ -35,14 +35,12 @@ jobs:
       - run: npm install -g pnpm
 
       - name: Build frontend
-        run: cd abyss-core/www && pnpm install && pnpm run build
+        run: make www
 
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
           cache: false
-
-      - run: go mod edit -replace github.com/nulorg/abyss-core=./abyss-core
 
       - uses: goreleaser/goreleaser-action@v5
         with:

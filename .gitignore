@@ -2,6 +2,7 @@
 abyss
 abyss-pro
 bin/
+www/
 *.exe
 *.exe~
 *.dll
