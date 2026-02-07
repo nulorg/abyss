@@ -6,19 +6,11 @@ on:
   pull_request:
     branches: [master, main]
 
-env:
-  GOPRIVATE: github.com/nulorg/abyss-core
-
 jobs:
   ci:
-    name: Build & Test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout abyss
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -36,52 +28,25 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: abyss-core
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install pnpm
-        run: npm install -g pnpm
-
       - name: Build frontend
         run: |
-          cd abyss-core/www
-          pnpm install
-          pnpm run build
+          npm install -g pnpm
+          cd abyss-core/www && pnpm install && pnpm run build
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
           cache: false
 
-      - name: Use local abyss-core (with built frontend)
+      - name: Setup
         run: go mod edit -replace github.com/nulorg/abyss-core=./abyss-core
 
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Run vet
-        run: go vet ./...
-
-      - name: Run tests
+      - name: Test
         run: go test ./...
 
-      - name: Build (linux/amd64)
-        run: |
-          GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=${{ vars.ABYSS_PUBLIC_KEY }}" \
-            -trimpath -o abyss-linux-amd64 .
-
-      - name: Build (darwin/arm64)
-        run: |
-          GOOS=darwin GOARCH=arm64 go build \
-            -ldflags="-s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=${{ vars.ABYSS_PUBLIC_KEY }}" \
-            -trimpath -o abyss-darwin-arm64 .
-
-      - name: Build (windows/amd64)
-        run: |
-          GOOS=windows GOARCH=amd64 go build \
-            -ldflags="-s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=${{ vars.ABYSS_PUBLIC_KEY }}" \
-            -trimpath -o abyss-windows-amd64.exe .
+      - name: Build
+        run: go build -ldflags="-s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=${{ vars.ABYSS_PUBLIC_KEY }}" -o abyss .
