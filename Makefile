@@ -1,8 +1,7 @@
 # Makefile
-# 编译流程: 克隆前端 → 编译前端 → 编译后端
+# www 目录是独立的 git 仓库，由 abyss/.gitignore 忽略
 
 BINARY=abyss
-WWW_REPO=git@github.com:nulorg/abyss-www.git
 
 -include .env
 export
@@ -12,7 +11,7 @@ LDFLAGS := -s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=$(ABYS
 
 .PHONY: build test clean www
 
-# 默认: 完整编译
+# 完整编译: 前端 + 后端
 build: www
 ifndef ABYSS_PUBLIC_KEY
 	$(error ABYSS_PUBLIC_KEY is not set)
@@ -20,12 +19,8 @@ endif
 	@echo "==> Building backend..."
 	go build -ldflags="$(LDFLAGS)" -trimpath -o $(BINARY) .
 
-# 克隆并编译前端
+# 编译前端
 www:
-	@if [ ! -d "www" ]; then \
-		echo "==> Cloning abyss-www..."; \
-		git clone $(WWW_REPO) www; \
-	fi
 	@echo "==> Building frontend..."
 	cd www && pnpm install && pnpm run build
 
@@ -33,4 +28,4 @@ test:
 	go test ./...
 
 clean:
-	rm -rf $(BINARY) www
+	rm -rf $(BINARY) www/dist
