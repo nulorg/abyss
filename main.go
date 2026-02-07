@@ -1,16 +1,12 @@
 package main
 
 import (
-	"embed"
-
 	"github.com/nulorg/abyss-core/bootstrap"
+	www "github.com/nulorg/abyss-www"
 )
-
-//go:embed www/dist/*
-var assets embed.FS
 
 func main() {
 	opts := &bootstrap.RunnerOptions{}
-	opts.Assets = assets
+	opts.Assets = www.Assets
 	bootstrap.Main(opts)
 }
