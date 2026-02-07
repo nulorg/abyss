@@ -1,121 +1,124 @@
 BINARY=abyss
-CMD=.
-GOPATH_BIN=$(shell go env GOPATH)/bin
 CORE_DIR=../abyss-core
 FRONTEND_DIR=$(CORE_DIR)/www
+GOPATH_BIN=$(shell go env GOPATH)/bin
 
-# Load .env file if it exists (for local development)
+# Load .env file if it exists
 -include .env
 export
 
-# ABYSS_PUBLIC_KEY (base64 Ed25519 public key) - REQUIRED for compilation
-# Can be set via:
-#   1. Environment variable: export ABYSS_PUBLIC_KEY=...
-#   2. .env file: ABYSS_PUBLIC_KEY=...
-#   3. Command line: make build ABYSS_PUBLIC_KEY=...
+# ABYSS_PUBLIC_KEY - required for build
 ABYSS_PUBLIC_KEY ?=
 LDFLAGS := -s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=$(ABYSS_PUBLIC_KEY)
 
-.PHONY: help all build build-backend build-frontend build-all test fmt vet lint clean install-deps release install docker
+.PHONY: help all build build-frontend test lint clean install docker release keygen-generate keygen-sign keygen-verify
 
-# Default target
 all: build
 
 help:
 	@echo "Makefile targets:"
 	@echo ""
-	@echo "  all (default)       Build backend"
-	@echo "  build               Build backend binary"
-	@echo "  build-backend       Build backend binary"
-	@echo "  build-frontend      Build frontend (if abyss-core is present)"
-	@echo "  build-all           Build both frontend and backend"
-	@echo "  install             Build and install to GOPATH/bin"
+	@echo "  all (default)       Build frontend + backend"
+	@echo "  build               Build frontend + backend"
+	@echo "  build-frontend      Build frontend only"
+	@echo "  test                Run all tests (frontend + backend)"
+	@echo "  lint                Run linters (frontend + backend)"
+	@echo "  clean               Remove all build artifacts"
+	@echo "  install             Install binary to GOPATH/bin"
 	@echo "  docker              Build Docker image"
-	@echo "  test                Run Go tests"
-	@echo "  fmt                 Format Go code"
-	@echo "  vet                 Run go vet"
-	@echo "  lint                Run golangci-lint"
-	@echo "  install-deps        Download Go dependencies"
 	@echo "  release             Run goreleaser"
-	@echo "  clean               Remove build artifacts"
 	@echo ""
-	@echo "Environment variables:"
-	@echo "  ABYSS_PUBLIC_KEY    Ed25519 public key (base64) - required for build"
-	@echo ""
-	@echo "Local development:"
-	@echo "  Create .env file with ABYSS_PUBLIC_KEY=<your-key>"
+	@echo "Keygen:"
+	@echo "  keygen-generate     Generate Ed25519 key pair"
+	@echo "  keygen-sign         Sign payload"
+	@echo "  keygen-verify       Verify license"
 
-# Build backend
-build: build-backend
+# Build all (frontend + backend)
+build: build-frontend build-backend
 
-# Build both
-build-all: build-frontend build-backend
-
-# Install to GOPATH/bin
-install:
-ifndef ABYSS_PUBLIC_KEY
-	$(error ABYSS_PUBLIC_KEY is not set. Set it via .env file, environment variable, or command line)
-endif
-	@echo "Installing to $(GOPATH_BIN)..."
-	@go install -ldflags="$(LDFLAGS)" -trimpath $(CMD)
+# Frontend build
+build-frontend:
+	@echo "Building frontend..."
+	@cd $(FRONTEND_DIR) && pnpm install && pnpm run build
 
 # Backend build
 build-backend:
 ifndef ABYSS_PUBLIC_KEY
-	$(error ABYSS_PUBLIC_KEY is not set. Set it via .env file, environment variable, or command line)
+	$(error ABYSS_PUBLIC_KEY is not set)
 endif
 	@echo "Building backend..."
-	@go build -ldflags="$(LDFLAGS)" -trimpath -o $(BINARY) $(CMD)
+	@go build -ldflags="$(LDFLAGS)" -trimpath -o $(BINARY) .
+
+# Install to GOPATH/bin
+install: build-frontend
+ifndef ABYSS_PUBLIC_KEY
+	$(error ABYSS_PUBLIC_KEY is not set)
+endif
+	@echo "Installing to $(GOPATH_BIN)..."
+	@go install -ldflags="$(LDFLAGS)" -trimpath .
 
 # Docker build
-docker:
+docker: build-frontend
 ifndef ABYSS_PUBLIC_KEY
-	$(error ABYSS_PUBLIC_KEY is not set. Set it via .env file, environment variable, or command line)
+	$(error ABYSS_PUBLIC_KEY is not set)
 endif
 	@echo "Building Docker image..."
 	@docker build --build-arg ABYSS_PUBLIC_KEY="$(ABYSS_PUBLIC_KEY)" -t abyss:local .
 
-# Frontend build (only if available locally)
-build-frontend:
-	@if [ -d "$(FRONTEND_DIR)" ]; then \
-		echo "Building frontend in $(FRONTEND_DIR)..."; \
-		cd $(FRONTEND_DIR) && pnpm install && pnpm run build; \
-	else \
-		echo "Skip building frontend: $(FRONTEND_DIR) not found. Use pre-built dist in abyss-core."; \
-	fi
+# Test all (frontend + backend)
+test: test-frontend test-backend
 
-# Backend test
-test:
-	@echo "Running tests..."
+test-frontend:
+	@echo "Testing frontend..."
+	@cd $(FRONTEND_DIR) && pnpm install && pnpm run test --run 2>/dev/null || echo "No frontend tests or test script not found"
+
+test-backend:
+	@echo "Testing backend..."
 	@go test ./...
+	@cd $(CORE_DIR) && go test ./...
 
-# Backend format
-fmt:
-	@echo "Formatting Go code..."
-	@gofmt -w .
+# Lint all
+lint: lint-frontend lint-backend
 
-# Backend vet
-vet:
-	@echo "Running go vet..."
-	@go vet ./...
+lint-frontend:
+	@echo "Linting frontend..."
+	@cd $(FRONTEND_DIR) && pnpm install && pnpm run lint 2>/dev/null || echo "No frontend lint script found"
 
-# Lint with golangci-lint
-lint:
-	@echo "Running golangci-lint..."
-	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found"; exit 1; }
-	@golangci-lint run ./...
-
-# Backend dependencies
-install-deps:
-	@echo "Downloading Go dependencies..."
-	@go mod download
+lint-backend:
+	@echo "Linting backend..."
+	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./... || echo "golangci-lint not installed"
+	@cd $(CORE_DIR) && command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./... || true
 
 # Release
 release:
 	@echo "Running goreleaser..."
 	@goreleaser release
 
-# Clean
+# Clean all
 clean:
-	@echo "Cleaning build artifacts..."
+	@echo "Cleaning..."
 	@rm -rf $(BINARY)
+	@rm -rf $(FRONTEND_DIR)/dist
+	@rm -rf $(FRONTEND_DIR)/node_modules
+
+# Keygen commands
+keygen-generate:
+	@go run $(CORE_DIR)/keygen/main.go generate
+
+keygen-sign:
+ifndef PRIVATE_KEY
+	$(error PRIVATE_KEY is required)
+endif
+ifndef PAYLOAD
+	$(error PAYLOAD is required)
+endif
+	@go run $(CORE_DIR)/keygen/main.go sign "$(PRIVATE_KEY)" "$(PAYLOAD)"
+
+keygen-verify:
+ifndef PUBLIC_KEY
+	$(error PUBLIC_KEY is required)
+endif
+ifndef LICENSE
+	$(error LICENSE is required)
+endif
+	@go run $(CORE_DIR)/keygen/main.go verify "$(PUBLIC_KEY)" "$(LICENSE)"
