@@ -1,6 +1,4 @@
-# Abyss Local Makefile
-# For quick local operations within the abyss directory only
-# For full workspace operations (including abyss-core), use the parent Makefile
+# Abyss Makefile
 
 BINARY=abyss
 
@@ -10,16 +8,26 @@ export
 ABYSS_PUBLIC_KEY ?=
 LDFLAGS := -s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=$(ABYSS_PUBLIC_KEY)
 
-.PHONY: build test clean
+.PHONY: help build test vet clean
+
+help:
+	@echo "Usage:"
+	@echo "  make build    Build the binary (requires ABYSS_PUBLIC_KEY)"
+	@echo "  make test     Run tests"
+	@echo "  make vet      Run go vet"
+	@echo "  make clean    Remove binary"
 
 build:
 ifndef ABYSS_PUBLIC_KEY
-	$(error ABYSS_PUBLIC_KEY is not set. Use parent Makefile for full build)
+	$(error ABYSS_PUBLIC_KEY is not set)
 endif
-	@go build -ldflags="$(LDFLAGS)" -trimpath -o $(BINARY) .
+	go build -ldflags="$(LDFLAGS)" -trimpath -o $(BINARY) .
 
 test:
-	@go test ./...
+	go test ./...
+
+vet:
+	go vet ./...
 
 clean:
-	@rm -rf $(BINARY)
+	rm -rf $(BINARY)

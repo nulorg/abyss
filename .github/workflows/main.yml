@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master, main]
 
+env:
+  GOPRIVATE: github.com/nulorg/abyss-core
+
 jobs:
   ci:
     name: Build & Test
@@ -14,13 +17,8 @@ jobs:
       contents: read
 
     steps:
-      - name: Create workspace
-        run: mkdir -p workspace
-
-      - name: Checkout abyss
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: workspace/abyss
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -31,15 +29,8 @@ jobs:
           owner: nulorg
           repositories: abyss-core
 
-      - name: Checkout abyss-core
-        uses: actions/checkout@v4
-        with:
-          repository: nulorg/abyss-core
-          token: ${{ steps.app-token.outputs.token }}
-          path: workspace/abyss-core
-
-      - name: Copy Makefile to workspace
-        run: cp workspace/abyss/Makefile.workspace workspace/Makefile
+      - name: Configure Git for private repo
+        run: git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -47,26 +38,14 @@ jobs:
           go-version: '1.25'
           cache: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Download dependencies
+        run: go mod download
 
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Build frontend
-        working-directory: workspace
-        run: make build-frontend
-
-      - name: Go vet
-        working-directory: workspace
-        run: make vet
+      - name: Run vet
+        run: go vet ./...
 
       - name: Run tests
-        working-directory: workspace
-        run: make test
+        run: go test ./...
 
-      - name: Build backend
-        working-directory: workspace
-        run: make build-backend ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
+      - name: Build
+        run: go build -ldflags="-s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=${{ vars.ABYSS_PUBLIC_KEY }}" -trimpath -o abyss .
