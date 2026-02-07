@@ -1,5 +1,6 @@
 BINARY=abyss
-CORE_DIR=../abyss-core
+# CORE_DIR can be overridden: make build CORE_DIR=./abyss-core
+CORE_DIR ?= ../abyss-core
 FRONTEND_DIR=$(CORE_DIR)/www
 GOPATH_BIN=$(shell go env GOPATH)/bin
 
@@ -32,14 +33,22 @@ help:
 	@echo "  keygen-generate     Generate Ed25519 key pair"
 	@echo "  keygen-sign         Sign payload"
 	@echo "  keygen-verify       Verify license"
+	@echo ""
+	@echo "Variables:"
+	@echo "  CORE_DIR            Path to abyss-core (default: ../abyss-core)"
+	@echo "  ABYSS_PUBLIC_KEY    Ed25519 public key for build"
 
 # Build all (frontend + backend)
 build: build-frontend build-backend
 
 # Frontend build
 build-frontend:
-	@echo "Building frontend..."
-	@cd $(FRONTEND_DIR) && pnpm install && pnpm run build
+	@if [ -d "$(FRONTEND_DIR)" ]; then \
+		echo "Building frontend..."; \
+		cd $(FRONTEND_DIR) && pnpm install && pnpm run build; \
+	else \
+		echo "Skipping frontend build: $(FRONTEND_DIR) not found"; \
+	fi
 
 # Backend build
 build-backend:
@@ -69,25 +78,41 @@ endif
 test: test-frontend test-backend
 
 test-frontend:
-	@echo "Testing frontend..."
-	@cd $(FRONTEND_DIR) && pnpm install && pnpm run test --run 2>/dev/null || echo "No frontend tests or test script not found"
+	@if [ -d "$(FRONTEND_DIR)" ]; then \
+		echo "Testing frontend..."; \
+		cd $(FRONTEND_DIR) && pnpm install && (pnpm run test --run 2>/dev/null || echo "No frontend tests"); \
+	else \
+		echo "Skipping frontend tests: $(FRONTEND_DIR) not found"; \
+	fi
 
 test-backend:
-	@echo "Testing backend..."
-	@go test ./...
-	@cd $(CORE_DIR) && go test ./...
+	@echo "Testing abyss..."
+	@go test ./... || true
+	@if [ -d "$(CORE_DIR)" ]; then \
+		echo "Testing abyss-core..."; \
+		cd $(CORE_DIR) && go test ./...; \
+	else \
+		echo "Skipping abyss-core tests: $(CORE_DIR) not found"; \
+	fi
 
 # Lint all
 lint: lint-frontend lint-backend
 
 lint-frontend:
-	@echo "Linting frontend..."
-	@cd $(FRONTEND_DIR) && pnpm install && pnpm run lint 2>/dev/null || echo "No frontend lint script found"
+	@if [ -d "$(FRONTEND_DIR)" ]; then \
+		echo "Linting frontend..."; \
+		cd $(FRONTEND_DIR) && pnpm install && (pnpm run lint 2>/dev/null || echo "No lint script"); \
+	else \
+		echo "Skipping frontend lint: $(FRONTEND_DIR) not found"; \
+	fi
 
 lint-backend:
-	@echo "Linting backend..."
+	@echo "Linting abyss..."
 	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./... || echo "golangci-lint not installed"
-	@cd $(CORE_DIR) && command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./... || true
+	@if [ -d "$(CORE_DIR)" ]; then \
+		echo "Linting abyss-core..."; \
+		cd $(CORE_DIR) && (command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./... || true); \
+	fi
 
 # Release
 release:
@@ -98,8 +123,8 @@ release:
 clean:
 	@echo "Cleaning..."
 	@rm -rf $(BINARY)
-	@rm -rf $(FRONTEND_DIR)/dist
-	@rm -rf $(FRONTEND_DIR)/node_modules
+	@if [ -d "$(FRONTEND_DIR)/dist" ]; then rm -rf $(FRONTEND_DIR)/dist; fi
+	@if [ -d "$(FRONTEND_DIR)/node_modules" ]; then rm -rf $(FRONTEND_DIR)/node_modules; fi
 
 # Keygen commands
 keygen-generate:

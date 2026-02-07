@@ -67,7 +67,7 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: make test
+        run: make test CORE_DIR=./abyss-core
 
       - name: Build backend
-        run: make build-backend ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
+        run: make build-backend CORE_DIR=./abyss-core ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
