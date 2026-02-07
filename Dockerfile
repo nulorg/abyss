@@ -1,14 +1,11 @@
+# syntax=docker/dockerfile:1
 # Build stage
 FROM golang:1.25-alpine AS builder
 
-ARG GITHUB_TOKEN
 ARG ABYSS_PUBLIC_KEY
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
-
-# Configure git for private repo access
-RUN git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
 WORKDIR /app
 
@@ -17,7 +14,11 @@ ENV GOPRIVATE=github.com/nulorg/abyss-core
 
 # Copy mod files first for better caching
 COPY go.mod go.sum ./
-RUN go mod download
+
+# Download dependencies with secret mount for GitHub token
+RUN --mount=type=secret,id=github_token \
+    git config --global url."https://$(cat /run/secrets/github_token)@github.com/".insteadOf "https://github.com/" && \
+    go mod download
 
 # Copy source code
 COPY . .

@@ -47,6 +47,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          secrets: |
+            github_token=${{ steps.app-token.outputs.token }}
           build-args: |
-            GITHUB_TOKEN=${{ steps.app-token.outputs.token }}
             ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
