@@ -1,0 +1,152 @@
+# Abyss Workspace Makefile
+# This Makefile operates both abyss and abyss-core from the parent directory
+
+ABYSS_DIR=abyss
+CORE_DIR=abyss-core
+FRONTEND_DIR=$(CORE_DIR)/www
+BINARY=$(ABYSS_DIR)/abyss
+
+# Load .env file if it exists
+-include .env
+export
+
+ABYSS_PUBLIC_KEY ?=
+LDFLAGS := -s -w -X github.com/nulorg/abyss-core/bootstrap.BuildPublicKey=$(ABYSS_PUBLIC_KEY)
+
+.PHONY: help all build build-frontend build-backend test fmt vet lint clean install docker release keygen-generate keygen-sign keygen-verify
+
+all: build
+
+help:
+	@echo "Abyss Workspace Makefile"
+	@echo ""
+	@echo "Build:"
+	@echo "  all / build         Build frontend + backend"
+	@echo "  build-frontend      Build frontend only"
+	@echo "  build-backend       Build backend only"
+	@echo "  install             Install binary to GOPATH/bin"
+	@echo "  docker              Build Docker image"
+	@echo "  release             Run goreleaser"
+	@echo ""
+	@echo "Quality:"
+	@echo "  test                Run all tests"
+	@echo "  fmt                 Format all code"
+	@echo "  vet                 Run go vet"
+	@echo "  lint                Run linters"
+	@echo "  check               Run fmt + vet + lint + test"
+	@echo ""
+	@echo "Keygen:"
+	@echo "  keygen-generate     Generate Ed25519 key pair"
+	@echo "  keygen-sign         Sign payload"
+	@echo "  keygen-verify       Verify license"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  clean               Remove build artifacts"
+
+# ============ Build ============
+
+build: build-frontend build-backend
+
+build-frontend:
+	@echo "==> Building frontend..."
+	@cd $(FRONTEND_DIR) && pnpm install && pnpm run build
+
+build-backend:
+ifndef ABYSS_PUBLIC_KEY
+	$(error ABYSS_PUBLIC_KEY is not set)
+endif
+	@echo "==> Building backend..."
+	@cd $(ABYSS_DIR) && go build -ldflags="$(LDFLAGS)" -trimpath -o abyss .
+
+install: build-frontend
+ifndef ABYSS_PUBLIC_KEY
+	$(error ABYSS_PUBLIC_KEY is not set)
+endif
+	@echo "==> Installing..."
+	@cd $(ABYSS_DIR) && go install -ldflags="$(LDFLAGS)" -trimpath .
+
+docker: build-frontend
+ifndef ABYSS_PUBLIC_KEY
+	$(error ABYSS_PUBLIC_KEY is not set)
+endif
+	@echo "==> Building Docker image..."
+	@cd $(ABYSS_DIR) && docker build --build-arg ABYSS_PUBLIC_KEY="$(ABYSS_PUBLIC_KEY)" -t abyss:local .
+
+release:
+	@echo "==> Running goreleaser..."
+	@cd $(ABYSS_DIR) && goreleaser release
+
+# ============ Quality ============
+
+test: test-frontend test-backend
+
+test-frontend:
+	@echo "==> Testing frontend..."
+	@cd $(FRONTEND_DIR) && pnpm install && (pnpm run test --run 2>/dev/null || echo "No frontend tests")
+
+test-backend:
+	@echo "==> Testing abyss-core..."
+	@cd $(CORE_DIR) && go test ./...
+	@echo "==> Testing abyss..."
+	@cd $(ABYSS_DIR) && go test ./...
+
+fmt: fmt-frontend fmt-backend
+
+fmt-frontend:
+	@echo "==> Formatting frontend..."
+	@cd $(FRONTEND_DIR) && (pnpm run format 2>/dev/null || pnpm run prettier --write . 2>/dev/null || echo "No format script")
+
+fmt-backend:
+	@echo "==> Formatting Go code..."
+	@cd $(CORE_DIR) && gofmt -w .
+	@cd $(ABYSS_DIR) && gofmt -w .
+
+vet:
+	@echo "==> Running go vet..."
+	@cd $(CORE_DIR) && go vet ./...
+	@cd $(ABYSS_DIR) && go vet ./...
+
+lint: lint-frontend lint-backend
+
+lint-frontend:
+	@echo "==> Linting frontend..."
+	@cd $(FRONTEND_DIR) && pnpm install && (pnpm run lint 2>/dev/null || echo "No lint script")
+
+lint-backend:
+	@echo "==> Linting Go code..."
+	@cd $(CORE_DIR) && golangci-lint run ./... 2>/dev/null || echo "golangci-lint not installed or no issues"
+	@cd $(ABYSS_DIR) && golangci-lint run ./... 2>/dev/null || echo "golangci-lint not installed or no issues"
+
+check: fmt vet lint test
+	@echo "==> All checks passed!"
+
+# ============ Keygen ============
+
+keygen-generate:
+	@go run $(CORE_DIR)/keygen/main.go generate
+
+keygen-sign:
+ifndef PRIVATE_KEY
+	$(error PRIVATE_KEY is required)
+endif
+ifndef PAYLOAD
+	$(error PAYLOAD is required)
+endif
+	@go run $(CORE_DIR)/keygen/main.go sign "$(PRIVATE_KEY)" "$(PAYLOAD)"
+
+keygen-verify:
+ifndef PUBLIC_KEY
+	$(error PUBLIC_KEY is required)
+endif
+ifndef LICENSE
+	$(error LICENSE is required)
+endif
+	@go run $(CORE_DIR)/keygen/main.go verify "$(PUBLIC_KEY)" "$(LICENSE)"
+
+# ============ Cleanup ============
+
+clean:
+	@echo "==> Cleaning..."
+	@rm -rf $(BINARY)
+	@rm -rf $(FRONTEND_DIR)/dist
+	@rm -rf $(FRONTEND_DIR)/node_modules

@@ -2,11 +2,10 @@ name: Docker CD
 
 on:
   push:
-    tags: [ 'v*' ]
+    tags: ['v*']
 
 env:
   REGISTRY: ghcr.io
-  # Image name should be lowercase for GHCR
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -15,11 +14,15 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write # Added for OIDC if needed
 
     steps:
+      - name: Create workspace
+        run: mkdir -p workspace
+
       - name: Checkout abyss
         uses: actions/checkout@v4
+        with:
+          path: workspace/abyss
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -35,49 +38,38 @@ jobs:
         with:
           repository: nulorg/abyss-core
           token: ${{ steps.app-token.outputs.token }}
-          path: abyss-core
+          path: workspace/abyss-core
+
+      - name: Copy Makefile to workspace
+        run: cp workspace/abyss/Makefile.workspace workspace/Makefile
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Build abyss-core frontend
-        run: |
-          cd abyss-core/www
-          npm install -g pnpm
-          pnpm install
-          pnpm run build
+      - name: Install pnpm
+        run: npm install -g pnpm
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.3'
-          cache: false
+      - name: Build frontend
+        working-directory: workspace
+        run: make build-frontend
 
-      - name: Local module replacement
-        run: go mod edit -replace github.com/nulorg/abyss-core=./abyss-core
-
-      - name: Tidy dependencies
-        run: go mod tidy
-
-      - name: Log in to the Container registry
+      - name: Log in to Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
-          # Ensure image name is lowercase
           flavor: |
             latest=auto
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short
@@ -88,12 +80,11 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: workspace/abyss
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-             GITHUB_TOKEN=${{ steps.app-token.outputs.token }}
-             ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
+            ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}

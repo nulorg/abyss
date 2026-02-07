@@ -2,8 +2,7 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
 
 jobs:
   goreleaser:
@@ -11,11 +10,16 @@ jobs:
     permissions:
       contents: write
       packages: write
+
     steps:
+      - name: Create workspace
+        run: mkdir -p workspace
+
       - name: Checkout abyss
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: workspace/abyss
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -31,7 +35,10 @@ jobs:
         with:
           repository: nulorg/abyss-core
           token: ${{ steps.app-token.outputs.token }}
-          path: abyss-core
+          path: workspace/abyss-core
+
+      - name: Copy Makefile to workspace
+        run: cp workspace/abyss/Makefile.workspace workspace/Makefile
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -44,22 +51,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build abyss-core frontend
-        run: |
-          cd abyss-core/www
-          npm install -g pnpm
-          pnpm install
-          pnpm run build
+      - name: Install pnpm
+        run: npm install -g pnpm
 
-      - name: Configure Git for private repo
-        run: |
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-
-      - name: Local module replacement
-        run: go mod edit -replace github.com/nulorg/abyss-core=./abyss-core
-
-      - name: Tidy dependencies
-        run: go mod tidy
+      - name: Build frontend
+        working-directory: workspace
+        run: make build-frontend
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
@@ -67,7 +64,7 @@ jobs:
           distribution: goreleaser
           version: latest
           args: release --clean
+          workdir: workspace/abyss
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOPRIVATE: github.com/nulorg/abyss-core
           ABYSS_PUBLIC_KEY: ${{ vars.ABYSS_PUBLIC_KEY }}

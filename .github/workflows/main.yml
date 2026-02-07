@@ -1,23 +1,26 @@
-name: Multi-stage CI
+name: CI
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
   pull_request:
-    branches: [ master, main ]
-
-env:
-  GOPRIVATE: github.com/nulorg/abyss-core
+    branches: [master, main]
 
 jobs:
-  backend-ci:
-    name: Backend CI
+  ci:
+    name: Build & Test
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
     steps:
+      - name: Create workspace
+        run: mkdir -p workspace
+
       - name: Checkout abyss
         uses: actions/checkout@v4
+        with:
+          path: workspace/abyss
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -33,7 +36,10 @@ jobs:
         with:
           repository: nulorg/abyss-core
           token: ${{ steps.app-token.outputs.token }}
-          path: abyss-core
+          path: workspace/abyss-core
+
+      - name: Copy Makefile to workspace
+        run: cp workspace/abyss/Makefile.workspace workspace/Makefile
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -46,28 +52,21 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build abyss-core frontend
-        run: |
-          cd abyss-core/www
-          npm install -g pnpm
-          pnpm install
-          pnpm run build
+      - name: Install pnpm
+        run: npm install -g pnpm
 
-      - name: Configure Git for private repo
-        run: |
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+      - name: Build frontend
+        working-directory: workspace
+        run: make build-frontend
 
-      - name: Local module replacement
-        run: go mod edit -replace github.com/nulorg/abyss-core=./abyss-core
-
-      - name: Tidy dependencies
-        run: go mod tidy
-
-      - name: Install dependencies
-        run: go mod download
+      - name: Go vet
+        working-directory: workspace
+        run: make vet
 
       - name: Run tests
-        run: make test CORE_DIR=./abyss-core
+        working-directory: workspace
+        run: make test
 
       - name: Build backend
-        run: make build-backend CORE_DIR=./abyss-core ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
+        working-directory: workspace
+        run: make build-backend ABYSS_PUBLIC_KEY=${{ vars.ABYSS_PUBLIC_KEY }}
