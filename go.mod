@@ -2,7 +2,7 @@ module github.com/nulorg/abyss
 
 go 1.25.3
 
-require github.com/nulorg/abyss-core v0.0.0-20260207082616-cad256bd810d
+require github.com/nulorg/abyss-core v0.0.0-20260207110542-292d5b9d631f
 
 require (
 	cloud.google.com/go/auth v0.17.0 // indirect
