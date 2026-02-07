@@ -23,22 +23,10 @@ jobs:
           app-id: ${{ vars.NULORG_PULL_APP_ID }}
           private-key: ${{ secrets.NULORG_PULL_APP_PRIVATE_KEY }}
           owner: nulorg
-          repositories: abyss-core,abyss-www
+          repositories: abyss-core
 
       - name: Configure Git for private repos
         run: git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-
-      - name: Clone www
-        run: git clone https://github.com/nulorg/abyss-www.git www
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - run: npm install -g pnpm
-
-      - name: Build frontend
-        run: make www
 
       - uses: actions/setup-go@v5
         with:

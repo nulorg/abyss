@@ -1,12 +1,7 @@
 package main
 
-import (
-	"github.com/nulorg/abyss-core/bootstrap"
-	www "github.com/nulorg/abyss-www"
-)
+import "github.com/nulorg/abyss-core/bootstrap"
 
 func main() {
-	opts := &bootstrap.RunnerOptions{}
-	opts.Assets = www.Assets
-	bootstrap.Main(opts)
+	bootstrap.Main()
 }
