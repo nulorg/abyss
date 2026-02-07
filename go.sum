@@ -491,8 +491,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/ncw/swift/v2 v2.0.5 h1:9o5Gsd7bInAFEqsGPcaUdsboMbqf8lnNtxqWKFT9iz8=
 github.com/ncw/swift/v2 v2.0.5/go.mod h1:cbAO76/ZwcFrFlHdXPjaqWZ9R7Hdar7HpjRXBfbjigk=
-github.com/nulorg/abyss-core v0.0.0-20260207081015-f93628c8e6c3 h1:iytwtVBBYWeVc4RhIfpIOgyjXaYFXayxvCHH8O4pHlM=
-github.com/nulorg/abyss-core v0.0.0-20260207081015-f93628c8e6c3/go.mod h1:yoc2yb5SmMRq+dYItMfBRi/wg7cJLzOV7ao2B3HOofQ=
+github.com/nulorg/abyss-core v0.0.0-20260207082616-cad256bd810d h1:+0+bryZgH6yGrQt11CXwJ4gPq9/kz2ysNYxUtj+SdCI=
+github.com/nulorg/abyss-core v0.0.0-20260207082616-cad256bd810d/go.mod h1:yoc2yb5SmMRq+dYItMfBRi/wg7cJLzOV7ao2B3HOofQ=
 github.com/nwaples/rardecode/v2 v2.2.1 h1:DgHK/O/fkTQEKBJxBMC5d9IU8IgauifbpG78+rZJMnI=
 github.com/nwaples/rardecode/v2 v2.2.1/go.mod h1:7uz379lSxPe6j9nvzxUZ+n7mnJNgjsRNb6IbvGVHRmw=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
